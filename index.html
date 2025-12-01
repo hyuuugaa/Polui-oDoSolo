@@ -3,56 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eco-Enfermagem: Defesa do Solo</title>
+    <title>Eco-Enfermagem: Defesa do Solo (Tablet)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap');
 
+        /* Reset e prevenção de comportamentos padrão de toque */
         body {
             font-family: 'Roboto', sans-serif;
             background-color: #1e293b;
             color: white;
-            overflow: hidden; /* Prevent scrolling during drag */
-            touch-action: none; /* Crucial for custom drag on mobile */
-            user-select: none;
+            overflow: hidden; /* Impede rolagem */
+            touch-action: none; /* Crucial: impede gestos de zoom/scroll do navegador */
+            user-select: none; /* Impede seleção de texto */
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            /* Altura dinâmica para suportar barras de navegação móveis */
+            height: 100vh; 
+            height: 100dvh; 
+            width: 100vw;
         }
 
         .pixel-font {
             font-family: 'Press Start 2P', cursive;
         }
 
-        /* Bin Styles */
+        /* Estilos das Lixeiras (Drop Zones) */
         .bin-zone {
-            transition: transform 0.1s, border-color 0.2s;
+            transition: transform 0.1s, border-color 0.2s, background-color 0.2s;
             border-top: 6px solid transparent;
+            /* Melhoria para toque */
+            touch-action: none;
         }
         .bin-zone.hovered {
-            transform: scale(1.05);
+            transform: scale(1.02);
             filter: brightness(1.2);
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            z-index: 10;
         }
 
-        /* The Waste Item */
+        /* Item de Lixo (Draggable) */
         .waste-item {
             position: absolute;
             cursor: grab;
             z-index: 50;
             transition: transform 0.1s;
             filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+            /* Garante que o toque seja registrado no elemento */
+            touch-action: none; 
         }
         .waste-item:active {
             cursor: grabbing;
-            transform: scale(1.1);
+            transform: scale(1.15);
+            z-index: 100;
         }
 
-        /* Animations */
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-        
+        /* Animações */
         @keyframes spawnPop {
             0% { transform: scale(0); opacity: 0; }
             80% { transform: scale(1.1); opacity: 1; }
@@ -61,23 +68,18 @@
 
         @keyframes wrongFlash {
             0%, 100% { background-color: transparent; }
-            50% { background-color: rgba(139, 69, 19, 0.5); } /* Brown/Muddy flash for soil pollution */
+            50% { background-color: rgba(139, 69, 19, 0.6); } 
         }
         
         .flash-mud {
-            animation: wrongFlash 0.3s ease-in-out;
+            animation: wrongFlash 0.4s ease-in-out;
         }
 
         .pop-in {
-            animation: spawnPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: spawnPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* Custom Scrollbar for desktop mainly */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 4px; }
-
-        /* Soil Layers Decoration */
+        /* Camadas do Solo */
         .soil-layer {
             background: linear-gradient(180deg, #5D4037 0%, #3E2723 100%);
             border-top: 4px solid #8D6E63;
@@ -88,177 +90,160 @@
         }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col justify-between bg-slate-900" id="game-body">
+<body class="flex flex-col justify-between bg-slate-900" id="game-body">
 
-    <!-- HUD (Heads Up Display) -->
-    <div class="flex justify-between items-center p-4 bg-slate-800 border-b-4 border-slate-700 z-10 relative shadow-md">
+    <!-- HUD (Painel Superior) -->
+    <!-- Ajustado padding para tablets -->
+    <div class="flex justify-between items-center p-3 md:p-5 bg-slate-800 border-b-4 border-slate-700 z-30 relative shadow-md shrink-0">
         <div class="flex flex-col">
-            <span class="text-xs text-slate-400 uppercase tracking-widest">Pontos</span>
-            <span id="score-display" class="pixel-font text-sky-400 text-xl md:text-2xl">0</span>
+            <span class="text-[10px] md:text-xs text-slate-400 uppercase tracking-widest">Pontos</span>
+            <span id="score-display" class="pixel-font text-sky-400 text-lg md:text-3xl">0</span>
         </div>
         
-        <div class="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center w-1/2 md:w-auto">
-             <div class="text-xs text-slate-400 uppercase mb-1 font-bold"><i class="fa-solid fa-droplet text-blue-400 mr-1"></i>Pureza do Lençol Freático</div>
+        <div class="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center w-3/5 md:w-auto">
+             <div class="text-[10px] md:text-sm text-slate-400 uppercase mb-1 font-bold whitespace-nowrap">
+                 <i class="fa-solid fa-droplet text-blue-400 mr-1"></i>Lençol Freático
+             </div>
              <!-- Health Bar -->
-             <div class="w-full md:w-64 h-6 bg-slate-900 rounded-full border-2 border-slate-600 overflow-hidden relative">
+             <div class="w-full md:w-80 h-4 md:h-6 bg-slate-900 rounded-full border-2 border-slate-600 overflow-hidden relative">
                  <div id="health-bar" class="h-full bg-blue-500 w-full transition-all duration-300 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                 <!-- Water bubbles decoration -->
                  <div class="absolute top-1 left-2 w-2 h-2 bg-blue-300 rounded-full opacity-50"></div>
-                 <div class="absolute bottom-1 right-10 w-1 h-1 bg-blue-300 rounded-full opacity-50"></div>
              </div>
         </div>
 
         <div class="flex flex-col text-right">
-            <span class="text-xs text-slate-400 uppercase tracking-widest">Nível</span>
-            <span id="level-display" class="pixel-font text-yellow-400 text-xl md:text-2xl">1</span>
+            <span class="text-[10px] md:text-xs text-slate-400 uppercase tracking-widest">Nível</span>
+            <span id="level-display" class="pixel-font text-yellow-400 text-lg md:text-3xl">1</span>
         </div>
     </div>
 
-    <!-- Game Area (Spawner) -->
-    <div id="game-area" class="flex-grow relative flex items-center justify-center overflow-hidden">
+    <!-- Área de Jogo (Onde os itens aparecem) -->
+    <div id="game-area" class="flex-grow relative flex items-center justify-center overflow-hidden z-10">
         
-        <!-- Background Decoration (Sky/Mountains hint) -->
-        <div class="absolute bottom-0 w-full h-1/3 opacity-10 pointer-events-none">
-            <i class="fa-solid fa-mountain text-9xl absolute bottom-0 left-10 text-slate-500"></i>
-            <i class="fa-solid fa-tree text-8xl absolute bottom-0 right-20 text-slate-500"></i>
+        <!-- Decoração de Fundo -->
+        <div class="absolute bottom-0 w-full h-1/3 opacity-10 pointer-events-none select-none">
+            <i class="fa-solid fa-mountain text-8xl md:text-9xl absolute bottom-0 left-4 text-slate-500"></i>
+            <i class="fa-solid fa-tree text-7xl md:text-8xl absolute bottom-0 right-10 text-slate-500"></i>
         </div>
 
-        <!-- Start Screen Overlay -->
+        <!-- Tela de Início (Overlay) -->
         <div id="start-overlay" class="absolute inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center text-center p-6">
-            <div class="mb-6 relative">
-                <i class="fa-solid fa-earth-americas text-6xl text-green-500 animate-pulse relative z-10"></i>
-                <i class="fa-solid fa-shield-halved text-4xl text-blue-500 absolute -bottom-2 -right-2 z-20 bg-slate-900 rounded-full border-2 border-slate-900"></i>
+            <div class="mb-4 md:mb-8 relative scale-90 md:scale-100">
+                <i class="fa-solid fa-earth-americas text-7xl md:text-8xl text-green-500 animate-pulse relative z-10"></i>
+                <i class="fa-solid fa-shield-halved text-5xl md:text-6xl text-blue-500 absolute -bottom-2 -right-2 z-20 bg-slate-900 rounded-full border-4 border-slate-900"></i>
             </div>
-            <h1 class="pixel-font text-2xl md:text-4xl text-white mb-2 leading-relaxed text-shadow">ECO-ENFERMAGEM</h1>
-            <h2 class="text-xl text-green-400 font-bold mb-6 tracking-wide">DEFESA DO SOLO</h2>
+            <h1 class="pixel-font text-2xl md:text-5xl text-white mb-2 leading-relaxed text-shadow tracking-tight">ECO-ENFERMAGEM</h1>
+            <h2 class="text-lg md:text-2xl text-green-400 font-bold mb-4 md:mb-8 tracking-wide uppercase">Defesa do Solo</h2>
             
-            <p class="text-slate-300 text-base md:text-lg mb-8 max-w-lg bg-slate-800 p-4 rounded-lg border border-slate-700">
-                <i class="fa-solid fa-triangle-exclamation text-yellow-500 mr-2"></i>
-                O descarte incorreto gera <strong>chorume</strong> e contamina o lençol freático!
-                <br><br>
-                Arraste o lixo hospitalar para a lixeira correta para proteger a água.
+            <p class="text-slate-300 text-sm md:text-xl mb-6 md:mb-8 max-w-xl bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-700 shadow-xl">
+                <i class="fa-solid fa-hand-pointer text-sky-400 mr-2 animate-bounce"></i>
+                <strong>Arraste</strong> o lixo hospitalar para a lixeira correta para evitar a contaminação da água!
             </p>
             
-            <div class="grid grid-cols-2 gap-3 text-xs md:text-sm text-left mb-8 w-full max-w-md">
-                <div class="flex items-center bg-slate-800 p-2 rounded border border-slate-700"><span class="w-3 h-3 bg-white border border-gray-400 mr-2 rounded-full shadow"></span> <span><strong>Branco:</strong> Infectante</span></div>
-                <div class="flex items-center bg-slate-800 p-2 rounded border border-slate-700"><span class="w-3 h-3 bg-yellow-400 border border-yellow-600 mr-2 rounded-full shadow"></span> <span><strong>Amarelo:</strong> Perfuro</span></div>
-                <div class="flex items-center bg-slate-800 p-2 rounded border border-slate-700"><span class="w-3 h-3 bg-orange-500 border border-orange-700 mr-2 rounded-full shadow"></span> <span><strong>Laranja:</strong> Químico</span></div>
-                <div class="flex items-center bg-slate-800 p-2 rounded border border-slate-700"><span class="w-3 h-3 bg-gray-800 border border-gray-600 mr-2 rounded-full shadow"></span> <span><strong>Preto:</strong> Comum</span></div>
-            </div>
-
-            <button onclick="startGame()" class="pixel-font bg-green-600 hover:bg-green-500 text-white py-4 px-10 rounded shadow-[0_4px_0_rgb(21,128,61)] active:shadow-none active:translate-y-1 transition-all text-lg">
-                INICIAR MISSÃO
+            <button onclick="startGame()" class="pixel-font bg-green-600 hover:bg-green-500 text-white py-4 px-12 md:py-6 md:px-16 rounded-lg shadow-[0_6px_0_rgb(21,128,61)] active:shadow-none active:translate-y-1 transition-all text-lg md:text-2xl uppercase tracking-wider">
+                Iniciar
             </button>
         </div>
 
-        <!-- Game Over Overlay -->
+        <!-- Tela de Game Over (Overlay) -->
         <div id="game-over-overlay" class="hidden absolute inset-0 bg-yellow-900/95 z-50 flex flex-col items-center justify-center text-center p-6">
-            <i class="fa-solid fa-skull-crossbones text-7xl text-white mb-4 animate-bounce"></i>
-            <h2 class="pixel-font text-3xl text-red-500 mb-2 text-shadow-lg">SOLO TÓXICO!</h2>
-            <p class="text-xl text-white mb-2">Lençol Freático Contaminado.</p>
-            <p class="text-lg text-slate-300 mb-8">Pontuação: <span id="final-score" class="text-white font-bold">0</span></p>
+            <i class="fa-solid fa-skull-crossbones text-7xl md:text-9xl text-white mb-6 animate-bounce"></i>
+            <h2 class="pixel-font text-3xl md:text-5xl text-red-500 mb-2 text-shadow-lg uppercase">Contaminado!</h2>
+            <p class="text-lg md:text-2xl text-white mb-2">Lençol Freático Comprometido.</p>
+            <p class="text-base md:text-xl text-slate-300 mb-8">Pontuação Final: <span id="final-score" class="text-white font-bold text-2xl">0</span></p>
             
-            <div class="bg-black/30 p-4 rounded mb-6 text-sm text-yellow-200">
-                <p>Dica: Metais pesados e químicos infiltram no solo e causam doenças graves.</p>
-            </div>
-
-            <button onclick="resetGame()" class="pixel-font bg-white text-yellow-900 py-3 px-8 rounded hover:bg-gray-200 shadow-lg font-bold">
+            <button onclick="resetGame()" class="pixel-font bg-white text-yellow-900 py-4 px-10 md:py-5 md:px-12 rounded-lg hover:bg-gray-200 shadow-xl font-bold text-lg md:text-xl uppercase">
                 Tentar Novamente
             </button>
         </div>
         
-        <!-- Feedback Text -->
-        <div id="feedback-text" class="absolute top-20 pointer-events-none text-2xl font-bold transition-opacity duration-500 opacity-0 z-40 text-shadow-md w-full text-center"></div>
+        <!-- Texto de Feedback Flutuante -->
+        <div id="feedback-text" class="absolute top-24 pointer-events-none text-3xl md:text-5xl font-bold transition-opacity duration-500 opacity-0 z-40 text-shadow-md w-full text-center tracking-wide"></div>
 
-        <!-- The Spawning Zone for Trash -->
-        <div id="spawn-zone" class="w-full h-full relative">
-            <!-- Trash items are injected here via JS -->
-        </div>
+        <!-- Zona de Spawn (Onde os itens caem) -->
+        <div id="spawn-zone" class="w-full h-full relative"></div>
     </div>
 
-    <!-- Bins Area (Drop Zones) -->
-    <div class="relative z-20">
-        <!-- Visual Soil Layer behind bins -->
-        <div class="absolute inset-x-0 bottom-0 h-4 soil-layer z-0"></div>
+    <!-- Área das Lixeiras (Parte Inferior Fixa) -->
+    <div class="relative z-20 shrink-0">
+        <!-- Camada Visual do Solo -->
+        <div class="absolute inset-x-0 bottom-0 h-6 md:h-8 soil-layer z-0"></div>
         
-        <div class="bg-slate-800/90 grid grid-cols-4 gap-1 md:gap-4 p-2 md:p-4 pb-6 shadow-2xl backdrop-blur-sm border-t border-slate-600">
+        <!-- Grid de Lixeiras -->
+        <div class="bg-slate-800/95 grid grid-cols-4 gap-2 md:gap-4 p-2 md:p-4 pb-8 md:pb-10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] backdrop-blur-md border-t-2 border-slate-600">
             
             <!-- Infectante (Branco) -->
-            <div class="bin-zone relative bg-slate-100 rounded-lg flex flex-col items-center justify-end pb-2 md:pb-4 border-b-8 border-slate-300 group h-32 md:h-40" data-type="infectante">
-                <div class="absolute top-2 left-2 text-slate-900 text-opacity-50 text-[10px] md:text-xs font-bold uppercase hidden md:block border border-slate-300 px-1 rounded">Grupo A</div>
-                <i class="fa-solid fa-biohazard text-3xl md:text-5xl text-slate-800 mb-2 opacity-80 group-hover:scale-110 transition-transform"></i>
-                <span class="text-[10px] md:text-sm font-bold text-slate-900 uppercase">Infectante</span>
-                <div class="absolute -bottom-8 w-full text-center text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">Patógenos</div>
+            <div class="bin-zone relative bg-slate-100 rounded-lg md:rounded-xl flex flex-col items-center justify-end pb-2 md:pb-4 border-b-8 border-slate-300 h-28 md:h-44" data-type="infectante">
+                <div class="absolute top-1 left-1 md:top-2 md:left-2 text-slate-900/50 text-[8px] md:text-xs font-bold uppercase border border-slate-300 px-1 rounded bg-white/50">Grupo A</div>
+                <i class="fa-solid fa-biohazard text-3xl md:text-6xl text-slate-800 mb-2 md:mb-4 opacity-80 pointer-events-none"></i>
+                <span class="text-[9px] md:text-base font-bold text-slate-900 uppercase tracking-tight md:tracking-normal">Infectante</span>
             </div>
 
             <!-- Perfuro (Amarelo) -->
-            <div class="bin-zone relative bg-yellow-400 rounded-lg flex flex-col items-center justify-end pb-2 md:pb-4 border-b-8 border-yellow-600 group h-32 md:h-40" data-type="perfuro">
-                 <div class="absolute top-2 left-2 text-yellow-900 text-opacity-50 text-[10px] md:text-xs font-bold uppercase hidden md:block border border-yellow-600 px-1 rounded">Grupo E</div>
-                <i class="fa-solid fa-box-open text-3xl md:text-5xl text-yellow-900 mb-2 opacity-80 group-hover:scale-110 transition-transform"></i>
-                <span class="text-[10px] md:text-sm font-bold text-yellow-900 uppercase">Perfuro</span>
-                <div class="absolute -bottom-8 w-full text-center text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">Agulhas</div>
+            <div class="bin-zone relative bg-yellow-400 rounded-lg md:rounded-xl flex flex-col items-center justify-end pb-2 md:pb-4 border-b-8 border-yellow-600 h-28 md:h-44" data-type="perfuro">
+                 <div class="absolute top-1 left-1 md:top-2 md:left-2 text-yellow-900/50 text-[8px] md:text-xs font-bold uppercase border border-yellow-600 px-1 rounded bg-yellow-300/50">Grupo E</div>
+                <i class="fa-solid fa-box-open text-3xl md:text-6xl text-yellow-900 mb-2 md:mb-4 opacity-80 pointer-events-none"></i>
+                <span class="text-[9px] md:text-base font-bold text-yellow-900 uppercase tracking-tight md:tracking-normal">Perfuro</span>
             </div>
 
             <!-- Químico (Laranja) -->
-            <div class="bin-zone relative bg-orange-500 rounded-lg flex flex-col items-center justify-end pb-2 md:pb-4 border-b-8 border-orange-700 group h-32 md:h-40" data-type="quimico">
-                 <div class="absolute top-2 left-2 text-white text-opacity-70 text-[10px] md:text-xs font-bold uppercase hidden md:block border border-orange-700 px-1 rounded">Grupo B</div>
-                <i class="fa-solid fa-flask text-3xl md:text-5xl text-white mb-2 opacity-80 group-hover:scale-110 transition-transform"></i>
-                <span class="text-[10px] md:text-sm font-bold text-white uppercase">Químico</span>
-                <div class="absolute -bottom-8 w-full text-center text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">Tóxicos</div>
+            <div class="bin-zone relative bg-orange-500 rounded-lg md:rounded-xl flex flex-col items-center justify-end pb-2 md:pb-4 border-b-8 border-orange-700 h-28 md:h-44" data-type="quimico">
+                 <div class="absolute top-1 left-1 md:top-2 md:left-2 text-white/70 text-[8px] md:text-xs font-bold uppercase border border-orange-700 px-1 rounded bg-orange-600/50">Grupo B</div>
+                <i class="fa-solid fa-flask text-3xl md:text-6xl text-white mb-2 md:mb-4 opacity-80 pointer-events-none"></i>
+                <span class="text-[9px] md:text-base font-bold text-white uppercase tracking-tight md:tracking-normal">Químico</span>
             </div>
 
-            <!-- Comum (Preto/Cinza Escuro) -->
-            <div class="bin-zone relative bg-slate-700 rounded-lg flex flex-col items-center justify-end pb-2 md:pb-4 border-b-8 border-slate-900 group h-32 md:h-40" data-type="comum">
-                 <div class="absolute top-2 left-2 text-slate-400 text-opacity-50 text-[10px] md:text-xs font-bold uppercase hidden md:block border border-slate-500 px-1 rounded">Grupo D</div>
-                <i class="fa-solid fa-recycle text-3xl md:text-5xl text-slate-300 mb-2 opacity-80 group-hover:scale-110 transition-transform"></i>
-                <span class="text-[10px] md:text-sm font-bold text-slate-300 uppercase">Comum</span>
-                <div class="absolute -bottom-8 w-full text-center text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">Reciclável</div>
+            <!-- Comum (Preto/Cinza) -->
+            <div class="bin-zone relative bg-slate-700 rounded-lg md:rounded-xl flex flex-col items-center justify-end pb-2 md:pb-4 border-b-8 border-slate-900 h-28 md:h-44" data-type="comum">
+                 <div class="absolute top-1 left-1 md:top-2 md:left-2 text-slate-400/50 text-[8px] md:text-xs font-bold uppercase border border-slate-500 px-1 rounded bg-slate-800/50">Grupo D</div>
+                <i class="fa-solid fa-recycle text-3xl md:text-6xl text-slate-300 mb-2 md:mb-4 opacity-80 pointer-events-none"></i>
+                <span class="text-[9px] md:text-base font-bold text-slate-300 uppercase tracking-tight md:tracking-normal">Comum</span>
             </div>
 
         </div>
     </div>
 
     <script>
-        // --- GAME DATA (FOCUSED ON SOIL IMPACT) ---
+        // --- DADOS DO JOGO ---
         const wasteData = [
-            // Infectante (Grupo A) - Contaminam solo com bactérias/vírus
-            { id: 'gaze', name: 'Gaze c/ Sangue', type: 'infectante', icon: 'fa-bandage', color: 'text-red-500' },
-            { id: 'luva', name: 'Luva Contaminada', type: 'infectante', icon: 'fa-hand-holding-medical', color: 'text-red-400' },
-            { id: 'bolsa', name: 'Bolsa de Sangue', type: 'infectante', icon: 'fa-droplet', color: 'text-red-600' },
-            { id: 'placa', name: 'Cultura Bactéria', type: 'infectante', icon: 'fa-bacterium', color: 'text-green-500' },
-            { id: 'orgao', name: 'Peça Anatômica', type: 'infectante', icon: 'fa-heart', color: 'text-red-700' },
+            // Infectante (Grupo A)
+            { id: 'gaze', name: 'Gaze Sangue', type: 'infectante', icon: 'fa-bandage', color: 'text-red-500' },
+            { id: 'luva', name: 'Luva Suja', type: 'infectante', icon: 'fa-hand-holding-medical', color: 'text-red-400' },
+            { id: 'bolsa', name: 'Bolsa Sangue', type: 'infectante', icon: 'fa-droplet', color: 'text-red-600' },
+            { id: 'placa', name: 'Cultura Bio', type: 'infectante', icon: 'fa-bacterium', color: 'text-green-500' },
+            { id: 'orgao', name: 'Peça Anat.', type: 'infectante', icon: 'fa-heart', color: 'text-red-700' },
 
-            // Perfurocortante (Grupo E) - Ferem catadores e animais
-            { id: 'agulha', name: 'Agulha Usada', type: 'perfuro', icon: 'fa-syringe', color: 'text-gray-300' },
+            // Perfurocortante (Grupo E)
+            { id: 'agulha', name: 'Agulha', type: 'perfuro', icon: 'fa-syringe', color: 'text-gray-300' },
             { id: 'bisturi', name: 'Bisturi', type: 'perfuro', icon: 'fa-scalpel', color: 'text-gray-200' },
-            { id: 'ampola', name: 'Ampola Vidro', type: 'perfuro', icon: 'fa-vial', color: 'text-blue-200' },
-            { id: 'vidro', name: 'Caco de Vidro', type: 'perfuro', icon: 'fa-wine-glass-empty', color: 'text-gray-400' },
+            { id: 'ampola', name: 'Ampola', type: 'perfuro', icon: 'fa-vial', color: 'text-blue-200' },
+            { id: 'vidro', name: 'Caco Vidro', type: 'perfuro', icon: 'fa-wine-glass-empty', color: 'text-gray-400' },
 
-            // Químico (Grupo B) - OS PIORES PARA O SOLO
+            // Químico (Grupo B)
             { id: 'remedio', name: 'Antibiótico', type: 'quimico', icon: 'fa-pills', color: 'text-orange-300' },
             { id: 'raiox', name: 'Revelador RX', type: 'quimico', icon: 'fa-x-ray', color: 'text-purple-400' },
-            { id: 'mercurio', name: 'Termômetro Hg', type: 'quimico', icon: 'fa-temperature-high', color: 'text-red-500' }, // New!
-            { id: 'pilha', name: 'Pilha/Bateria', type: 'quimico', icon: 'fa-battery-full', color: 'text-green-400' },
-            { id: 'quimio', name: 'Quimioterápico', type: 'quimico', icon: 'fa-prescription-bottle', color: 'text-yellow-200' },
+            { id: 'mercurio', name: 'Mercúrio', type: 'quimico', icon: 'fa-temperature-high', color: 'text-red-500' },
+            { id: 'pilha', name: 'Pilha', type: 'quimico', icon: 'fa-battery-full', color: 'text-green-400' },
+            { id: 'quimio', name: 'Quimio', type: 'quimico', icon: 'fa-prescription-bottle', color: 'text-yellow-200' },
 
-            // Comum (Grupo D) - Enchem aterros desnecessariamente
+            // Comum (Grupo D)
             { id: 'papel', name: 'Papel Toalha', type: 'comum', icon: 'fa-scroll', color: 'text-white' },
-            { id: 'copo', name: 'Copo Plástico', type: 'comum', icon: 'fa-whiskey-glass', color: 'text-blue-100' },
-            { id: 'fralda', name: 'Fralda (Limpa)', type: 'comum', icon: 'fa-baby', color: 'text-yellow-100' },
-            { id: 'embalagem', name: 'Caixa Papelão', type: 'comum', icon: 'fa-box', color: 'text-yellow-600' }
+            { id: 'copo', name: 'Copo', type: 'comum', icon: 'fa-whiskey-glass', color: 'text-blue-100' },
+            { id: 'fralda', name: 'Fralda', type: 'comum', icon: 'fa-baby', color: 'text-yellow-100' },
+            { id: 'embalagem', name: 'Caixa', type: 'comum', icon: 'fa-box', color: 'text-yellow-600' }
         ];
 
-        // --- GAME STATE ---
+        // --- ESTADO DO JOGO ---
         let score = 0;
         let health = 100;
         let level = 1;
         let gameActive = false;
         let spawnInterval;
-        let spawnRate = 2500; // ms
+        let spawnRate = 2500;
         let activeItems = [];
         let itemCounter = 0;
 
-        // --- DOM ELEMENTS ---
+        // --- ELEMENTOS DOM ---
         const gameBody = document.getElementById('game-body');
         const spawnZone = document.getElementById('spawn-zone');
         const scoreDisplay = document.getElementById('score-display');
@@ -269,27 +254,24 @@
         const feedbackText = document.getElementById('feedback-text');
         const bins = document.querySelectorAll('.bin-zone');
 
-        // --- INITIALIZATION ---
+        // --- INICIALIZAÇÃO ---
         function startGame() {
             startOverlay.classList.add('hidden');
             gameOverOverlay.classList.add('hidden');
             
-            // Reset state
             score = 0;
             health = 100;
             level = 1;
             spawnRate = 2500;
             itemCounter = 0;
             
-            // Clear existing items
             spawnZone.innerHTML = '';
             activeItems = [];
 
             updateUI();
             gameActive = true;
             
-            // Start loops
-            spawnItem(); // immediate spawn
+            spawnItem();
             spawnInterval = setTimeout(spawnLoop, spawnRate);
         }
 
@@ -300,55 +282,49 @@
 
         function spawnLoop() {
             if (!gameActive) return;
-            
             spawnItem();
             
-            // Speed up based on score milestones
-            if (score > 500 && level === 1) { level = 2; spawnRate = 2000; showFeedback("NÍVEL 2: FLUXO INTENSO!", "text-yellow-400"); }
-            if (score > 1500 && level === 2) { level = 3; spawnRate = 1500; showFeedback("NÍVEL 3: EMERGÊNCIA!", "text-orange-400"); }
-            if (score > 3000 && level === 3) { level = 4; spawnRate = 1000; showFeedback("NÍVEL MÁXIMO!", "text-red-500"); }
+            if (score > 500 && level === 1) { level = 2; spawnRate = 2000; showFeedback("NÍVEL 2!", "text-yellow-400"); }
+            if (score > 1500 && level === 2) { level = 3; spawnRate = 1500; showFeedback("ACELERANDO!", "text-orange-400"); }
+            if (score > 3000 && level === 3) { level = 4; spawnRate = 1000; showFeedback("MÁXIMO PERIGO!", "text-red-500"); }
 
             updateUI();
-            
             spawnInterval = setTimeout(spawnLoop, spawnRate);
         }
 
         function spawnItem() {
-            if (activeItems.length >= 5) return; // Limit screen clutter
+            if (activeItems.length >= 6) return;
 
             const data = wasteData[Math.floor(Math.random() * wasteData.length)];
             const el = document.createElement('div');
             
-            // Visual Style
-            el.className = 'waste-item bg-slate-800 rounded-full w-20 h-20 md:w-24 md:h-24 flex flex-col items-center justify-center border-4 border-slate-600 pop-in select-none';
+            // Tamanhos ajustados para Tablet/Toque (maiores)
+            el.className = 'waste-item bg-slate-800 rounded-full w-20 h-20 md:w-28 md:h-28 flex flex-col items-center justify-center border-4 border-slate-600 pop-in select-none shadow-xl';
             el.innerHTML = `
-                <i class="fa-solid ${data.icon} text-3xl md:text-4xl ${data.color} mb-1 pointer-events-none"></i>
-                <span class="text-[9px] md:text-[10px] text-center leading-tight px-1 font-bold text-white pointer-events-none text-shadow-sm">${data.name}</span>
+                <i class="fa-solid ${data.icon} text-3xl md:text-5xl ${data.color} mb-1 pointer-events-none"></i>
+                <span class="text-[10px] md:text-xs text-center leading-tight px-1 font-bold text-white pointer-events-none text-shadow-sm uppercase tracking-tighter md:tracking-normal">${data.name}</span>
             `;
             
-            // Random Position (within spawn zone bounds)
-            // We want them to spawn in the upper 60% of the game area so they don't overlap bins immediately
-            const maxX = spawnZone.clientWidth - 100;
-            const maxY = spawnZone.clientHeight * 0.6; 
+            // Área de Spawn segura
+            const maxX = spawnZone.clientWidth - 120; // Margem de segurança
+            const maxY = spawnZone.clientHeight * 0.5; // Apenas metade superior
             
             const randX = Math.random() * maxX;
             const randY = Math.random() * maxY;
 
-            el.style.left = `${randX}px`;
-            el.style.top = `${randY}px`;
+            el.style.left = `${randX + 10}px`;
+            el.style.top = `${randY + 10}px`;
             
-            // Data attributes for logic
             el.dataset.type = data.type;
             el.dataset.id = `item-${itemCounter++}`;
 
-            // Add Drag Logic
             addDragLogic(el);
 
             spawnZone.appendChild(el);
             activeItems.push(el);
         }
 
-        // --- DRAG AND DROP LOGIC (Touch & Mouse) ---
+        // --- LÓGICA DE ARRASTAR E SOLTAR (Multitouch) ---
         function addDragLogic(el) {
             let isDragging = false;
             let startX, startY, initialLeft, initialTop;
@@ -357,6 +333,7 @@
                 if (!gameActive) return;
                 isDragging = true;
                 
+                // Suporte unificado Mouse/Touch
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
@@ -367,12 +344,17 @@
                 initialTop = el.offsetTop;
 
                 el.style.transition = 'none'; 
-                el.style.zIndex = 100; 
+                el.style.zIndex = 100;
+                
+                // Feedback visual imediato
+                el.style.transform = 'scale(1.15)';
             };
 
             const doDrag = (e) => {
                 if (!isDragging) return;
-                e.preventDefault(); 
+                
+                // Importante: previne scroll da tela no mobile
+                if(e.cancelable) e.preventDefault(); 
 
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -389,8 +371,10 @@
             const endDrag = (e) => {
                 if (!isDragging) return;
                 isDragging = false;
+                
                 el.style.transition = 'transform 0.2s, top 0.2s, left 0.2s';
                 el.style.zIndex = 50;
+                el.style.transform = 'scale(1)'; // Reseta escala
 
                 const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
                 const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
@@ -401,15 +385,16 @@
                     processDrop(el, droppedBin.dataset.type);
                 }
                 
+                // Limpa highlights
                 bins.forEach(b => b.classList.remove('hovered'));
             };
 
-            // Mouse
+            // Event Listeners
             el.addEventListener('mousedown', startDrag);
             window.addEventListener('mousemove', doDrag);
             window.addEventListener('mouseup', endDrag);
 
-            // Touch
+            // Passive false é crucial para prevenir scroll
             el.addEventListener('touchstart', startDrag, {passive: false});
             window.addEventListener('touchmove', doDrag, {passive: false});
             window.addEventListener('touchend', endDrag);
@@ -431,7 +416,7 @@
             return null;
         }
 
-        // --- GAME LOGIC ---
+        // --- LÓGICA DO JOGO ---
         function processDrop(itemEl, binType) {
             const itemType = itemEl.dataset.type;
 
@@ -446,13 +431,14 @@
             score += 100 + (level * 20);
             updateUI();
             
-            // Random positive feedback for variety
-            const msgs = ["PROTEGIDO!", "BOA!", "SEGURO!", "LIMPO!"];
+            const msgs = ["SALVOU!", "BOA!", "LIMPO!", "ISSO!"];
             const msg = msgs[Math.floor(Math.random() * msgs.length)];
             
             showFeedback(msg, "text-green-400");
             
-            el.style.transform = "scale(0) rotate(360deg)";
+            // Animação de sucesso (encolher e girar)
+            el.style.transition = 'all 0.3s ease-in';
+            el.style.transform = "scale(0) rotate(180deg)";
             el.style.opacity = "0";
             
             setTimeout(() => {
@@ -466,18 +452,18 @@
             updateUI();
             
             gameBody.classList.add('flash-mud');
-            setTimeout(() => gameBody.classList.remove('flash-mud'), 300);
+            setTimeout(() => gameBody.classList.remove('flash-mud'), 400);
 
-            // Soil Pollution Feedback
-            const errors = ["LIXIVIAÇÃO!", "CONTAMINAÇÃO!", "SOLO TÓXICO!", "CHORUME!"];
+            const errors = ["VAZAMENTO!", "TÓXICO!", "ERROU!", "POLUIÇÃO!"];
             const err = errors[Math.floor(Math.random() * errors.length)];
 
-            showFeedback(err, "text-red-600");
+            showFeedback(err, "text-red-500");
 
-            // Shake animation
+            // Animação de erro (tremer)
+            el.style.transition = 'transform 0.1s';
             el.style.transform = "translateX(10px)";
-            setTimeout(() => el.style.transform = "translateX(-10px)", 50);
-            setTimeout(() => el.style.transform = "translateX(0)", 100);
+            setTimeout(() => el.style.transform = "translateX(-10px)", 100);
+            setTimeout(() => el.style.transform = "translateX(0)", 200);
 
             if (health <= 0) {
                 gameOver();
@@ -490,24 +476,23 @@
             
             healthBar.style.width = `${health}%`;
             
-            // Health Bar Colors based on pollution
-            if (health > 60) healthBar.className = "h-full bg-blue-500 transition-all duration-300 shadow-[0_0_10px_rgba(59,130,246,0.5)]";
-            else if (health > 30) healthBar.className = "h-full bg-yellow-600 transition-all duration-300 shadow-[0_0_10px_rgba(202,138,4,0.5)]";
-            else healthBar.className = "h-full bg-stone-700 transition-all duration-300 shadow-[0_0_10px_rgba(68,64,60,0.5)]"; // Muddy color for death
+            if (health > 60) healthBar.className = "h-full bg-blue-500 transition-all duration-300 shadow-[0_0_15px_rgba(59,130,246,0.6)]";
+            else if (health > 30) healthBar.className = "h-full bg-yellow-500 transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.6)]";
+            else healthBar.className = "h-full bg-stone-700 transition-all duration-300 shadow-[0_0_15px_rgba(68,64,60,0.8)]";
         }
 
         function showFeedback(text, colorClass) {
             feedbackText.innerText = text;
-            feedbackText.className = `absolute top-20 left-1/2 transform -translate-x-1/2 text-3xl md:text-5xl font-bold z-50 pixel-font ${colorClass} text-shadow-lg`;
+            feedbackText.className = `absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl md:text-6xl font-bold z-50 pixel-font ${colorClass} text-shadow-lg`;
             
             void feedbackText.offsetWidth; // trigger reflow
             
             feedbackText.style.opacity = 1;
-            feedbackText.style.transform = "translate(-50%, -20px) scale(1.2)";
+            feedbackText.style.transform = "translate(-50%, -50%) scale(1.2)";
 
             setTimeout(() => {
                 feedbackText.style.opacity = 0;
-                feedbackText.style.transform = "translate(-50%, -50px) scale(1)";
+                feedbackText.style.transform = "translate(-50%, -100%) scale(0.8)";
             }, 800);
         }
 
@@ -517,7 +502,6 @@
             document.getElementById('final-score').innerText = score;
             gameOverOverlay.classList.remove('hidden');
         }
-
     </script>
 </body>
 </html>
